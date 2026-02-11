@@ -3,200 +3,211 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caixa Inteligente</title>
+<title>Caixa Inteligente Pro 2.0</title>
 
 <style>
-body{
-    font-family: Arial, sans-serif;
-    background:#121212;
-    color:white;
-    padding:20px;
-}
-
-h1,h2{
-    color:#00ff88;
-}
-
-input{
-    padding:8px;
-    margin:5px 0;
-    width:100%;
-    border-radius:6px;
-    border:none;
-}
-
+body{margin:0;font-family:Arial;background:#121212;color:white}
+.container{padding:20px}
+input,select{
+padding:10px;margin:5px 0;width:100%;
+border-radius:6px;border:none}
 button{
-    padding:8px 15px;
-    margin-top:5px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    background:#00ff88;
-    font-weight:bold;
-}
-
-button:hover{
-    opacity:0.8;
-}
-
+padding:10px;margin-top:5px;
+border:none;border-radius:6px;
+cursor:pointer;background:#00ff88;font-weight:bold}
+button:hover{opacity:0.8}
 .card{
-    background:#1e1e1e;
-    padding:15px;
-    margin:10px 0;
-    border-radius:10px;
-}
+background:#1e1e1e;padding:15px;
+margin:10px 0;border-radius:10px}
+.hidden{display:none}
+.topbar{
+background:#000;padding:15px;
+display:flex;justify-content:space-between;align-items:center}
+.dashboard{
+display:flex;gap:15px;flex-wrap:wrap}
+.box{
+background:#1e1e1e;padding:20px;
+border-radius:10px;flex:1;
+min-width:150px;text-align:center}
+hr{margin:30px 0}
 </style>
-
 </head>
 <body>
 
-<h1>💰 Caixa Inteligente</h1>
+<div id="authSection" class="container">
+<h2>🔐 Login</h2>
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="senha" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+<button onclick="registrar()">Criar Conta</button>
+</div>
 
-<h2>📦 Cadastrar Produto</h2>
+<div id="appSection" class="hidden">
 
-<input type="text" id="nomeProduto" placeholder="Nome do Produto">
-<input type="number" id="precoProduto" placeholder="Preço de Venda">
-<input type="number" id="custoProduto" placeholder="Custo do Produto">
+<div class="topbar">
+<h2>💰 Caixa Inteligente Pro 2.0</h2>
+<button onclick="logout()">Sair</button>
+</div>
 
-<button onclick="salvarProduto()">Salvar Produto</button>
+<div class="container">
+
+<h3>📊 Dashboard</h3>
+<div class="dashboard">
+<div class="box"><h4>Produtos</h4><p id="totalProdutos">0</p></div>
+<div class="box"><h4>Faturamento</h4><p id="faturamento">R$ 0</p></div>
+<div class="box"><h4>Lucro Bruto</h4><p id="lucroBruto">R$ 0</p></div>
+<div class="box"><h4>Lucro Líquido</h4><p id="lucroLiquido">R$ 0</p></div>
+</div>
 
 <hr>
 
-<h2>📋 Produtos Cadastrados</h2>
+<h3>📦 Cadastrar Produto</h3>
+<input type="text" id="nomeProduto" placeholder="Nome">
+<input type="number" id="precoProduto" placeholder="Preço">
+<input type="number" id="custoProduto" placeholder="Custo">
+<input type="number" id="estoqueProduto" placeholder="Estoque Inicial">
+<button onclick="salvarProduto()">Salvar Produto</button>
+
 <div id="listaProdutos"></div>
+
+<hr>
+
+<h3>💰 Registrar Venda</h3>
+<select id="produtoVenda"></select>
+<input type="number" id="quantidadeVenda" placeholder="Quantidade">
+<select id="pagamentoVenda">
+<option value="Pix">Pix</option>
+<option value="Dinheiro">Dinheiro</option>
+<option value="Cartão">Cartão</option>
+</select>
+<button onclick="registrarVenda()">Registrar Venda</button>
+
+</div>
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs, 
-    doc, 
-    updateDoc, 
-    deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where }
+from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_AUTH_DOMAIN",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_STORAGE_BUCKET",
-  messagingSenderId: "SEU_MESSAGING_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
-console.log("🔥 Firebase conectado!");
+let usuarioAtual=null;
 
-// ==========================
-// SALVAR PRODUTO
-// ==========================
+onAuthStateChanged(auth,(user)=>{
+if(user){
+usuarioAtual=user;
+document.getElementById("authSection").classList.add("hidden");
+document.getElementById("appSection").classList.remove("hidden");
+carregarTudo();
+}else{
+document.getElementById("authSection").classList.remove("hidden");
+document.getElementById("appSection").classList.add("hidden");
+}
+});
 
-window.salvarProduto = async function(){
+window.registrar=async()=>{
+await createUserWithEmailAndPassword(auth,email.value,senha.value);
+}
+window.login=async()=>{
+await signInWithEmailAndPassword(auth,email.value,senha.value);
+}
+window.logout=async()=>{await signOut(auth);}
 
-    const nome = document.getElementById("nomeProduto").value;
-    const preco = parseFloat(document.getElementById("precoProduto").value);
-    const custo = parseFloat(document.getElementById("custoProduto").value);
-
-    if(!nome || !preco || !custo){
-        alert("Preencha todos os campos");
-        return;
-    }
-
-    await addDoc(collection(db,"produtos"),{
-        nome,
-        preco,
-        custo
-    });
-
-    alert("Produto salvo!");
-
-    document.getElementById("nomeProduto").value = "";
-    document.getElementById("precoProduto").value = "";
-    document.getElementById("custoProduto").value = "";
-
-    carregarProdutos();
+async function salvarProduto(){
+await addDoc(collection(db,"produtos"),{
+nome:nomeProduto.value,
+preco:parseFloat(precoProduto.value),
+custo:parseFloat(custoProduto.value),
+estoque:parseInt(estoqueProduto.value),
+uid:usuarioAtual.uid
+});
+carregarTudo();
 }
 
-// ==========================
-// CARREGAR PRODUTOS
-// ==========================
+async function registrarVenda(){
+const id=produtoVenda.value;
+const qtd=parseInt(quantidadeVenda.value);
+const produtoDoc=doc(db,"produtos",id);
+const snap=await getDocs(query(collection(db,"produtos"),where("_name_","==",id)));
+snap.forEach(async(d)=>{
+let produto=d.data();
+if(produto.estoque<qtd)return alert("Sem estoque suficiente");
+await updateDoc(produtoDoc,{estoque:produto.estoque-qtd});
+await addDoc(collection(db,"vendas"),{
+produto:produto.nome,
+valor:produto.preco*qtd,
+lucro:(produto.preco-produto.custo)*qtd,
+pagamento:pagamentoVenda.value,
+uid:usuarioAtual.uid
+});
+carregarTudo();
+});
+}
+
+async function carregarTudo(){
+carregarProdutos();
+carregarDashboard();
+}
 
 async function carregarProdutos(){
+const lista=document.getElementById("listaProdutos");
+lista.innerHTML="";
+produtoVenda.innerHTML="";
+let total=0;
 
-    const lista = document.getElementById("listaProdutos");
-    lista.innerHTML = "";
+const q=query(collection(db,"produtos"),where("uid","==",usuarioAtual.uid));
+const snapshot=await getDocs(q);
 
-    const querySnapshot = await getDocs(collection(db,"produtos"));
+snapshot.forEach(docSnap=>{
+const p=docSnap.data();
+const id=docSnap.id;
+total++;
+lista.innerHTML+=`
+<div class="card">
+<strong>${p.nome}</strong><br>
+Preço: R$ ${p.preco}<br>
+Custo: R$ ${p.custo}<br>
+Estoque: ${p.estoque}<br>
+</div>`;
+produtoVenda.innerHTML+=<option value="${id}">${p.nome}</option>;
+});
 
-    querySnapshot.forEach((documento)=>{
-
-        const produto = documento.data();
-        const id = documento.id;
-        const lucro = produto.preco - produto.custo;
-
-        lista.innerHTML += `
-            <div class="card">
-                <strong>${produto.nome}</strong><br>
-                Preço: R$ ${produto.preco}<br>
-                Custo: R$ ${produto.custo}<br>
-                Lucro Unitário: R$ ${lucro.toFixed(2)}<br><br>
-
-                <button onclick="editarProduto('${id}','${produto.nome}',${produto.preco},${produto.custo})">
-                ✏ Editar
-                </button>
-
-                <button onclick="excluirProduto('${id}')">
-                🗑 Excluir
-                </button>
-            </div>
-        `;
-    });
+document.getElementById("totalProdutos").innerText=total;
 }
 
-// ==========================
-// EDITAR PRODUTO
-// ==========================
+async function carregarDashboard(){
+let faturamento=0;
+let lucro=0;
 
-window.editarProduto = async function(id,nome,preco,custo){
+const q=query(collection(db,"vendas"),where("uid","==",usuarioAtual.uid));
+const snapshot=await getDocs(q);
 
-    const novoNome = prompt("Novo nome:", nome);
-    const novoPreco = prompt("Novo preço:", preco);
-    const novoCusto = prompt("Novo custo:", custo);
+snapshot.forEach(docSnap=>{
+const v=docSnap.data();
+faturamento+=v.valor;
+lucro+=v.lucro;
+});
 
-    if(novoNome && novoPreco && novoCusto){
-
-        await updateDoc(doc(db,"produtos",id),{
-            nome:novoNome,
-            preco:parseFloat(novoPreco),
-            custo:parseFloat(novoCusto)
-        });
-
-        alert("Produto atualizado!");
-        carregarProdutos();
-    }
+document.getElementById("faturamento").innerText="R$ "+faturamento.toFixed(2);
+document.getElementById("lucroBruto").innerText="R$ "+lucro.toFixed(2);
+document.getElementById("lucroLiquido").innerText="R$ "+lucro.toFixed(2);
 }
-
-// ==========================
-// EXCLUIR PRODUTO
-// ==========================
-
-window.excluirProduto = async function(id){
-
-    if(confirm("Deseja excluir esse produto?")){
-        await deleteDoc(doc(db,"produtos",id));
-        alert("Produto excluído!");
-        carregarProdutos();
-    }
-}
-
-carregarProdutos();
 
 </script>
-
 </body>
 </html>
