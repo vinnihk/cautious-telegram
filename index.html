@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caixa Inteligente Pro 2.0</title>
+<title>Caixa Inteligente Pro</title>
 
 <style>
 body{margin:0;font-family:Arial;background:#121212;color:white}
@@ -45,7 +45,7 @@ hr{margin:30px 0}
 <div id="appSection" class="hidden">
 
 <div class="topbar">
-<h2>💰 Caixa Inteligente Pro 2.0</h2>
+<h2>💰 Caixa Inteligente Pro</h2>
 <button onclick="logout()">Sair</button>
 </div>
 
@@ -56,7 +56,6 @@ hr{margin:30px 0}
 <div class="box"><h4>Produtos</h4><p id="totalProdutos">0</p></div>
 <div class="box"><h4>Faturamento</h4><p id="faturamento">R$ 0</p></div>
 <div class="box"><h4>Lucro Bruto</h4><p id="lucroBruto">R$ 0</p></div>
-<div class="box"><h4>Lucro Líquido</h4><p id="lucroLiquido">R$ 0</p></div>
 </div>
 
 <hr>
@@ -87,33 +86,20 @@ hr{margin:30px 0}
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where }
-from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, where }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<!-- Firebase SDK -->
-<script type="module">
-  // Importando Firebase
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-  // Configuração do seu projeto
-  const firebaseConfig = {
-    apiKey: "AIzaSyCeZGx81bH8fe0XimE_1Gu4agejGPzWQ8A",
-    authDomain: "caixa-inteligente-f2d23.firebaseapp.com",
-    projectId: "caixa-inteligente-f2d23",
-    storageBucket: "caixa-inteligente-f2d23.firebasestorage.app",
-    messagingSenderId: "685162507832",
-    appId: "1:685162507832:web:716647160f381d96d8c0cd"
-  };
-
-  // Inicializando Firebase
-  const app = initializeApp(firebaseConfig);
-
-  console.log("🔥 Firebase conectado com sucesso!");
-</script>
-
+const firebaseConfig = {
+  apiKey: "AIzaSyCeZGx81bH8fe0XimE_1Gu4agejGPzWQ8A",
+  authDomain: "caixa-inteligente-f2d23.firebaseapp.com",
+  projectId: "caixa-inteligente-f2d23",
+  storageBucket: "caixa-inteligente-f2d23.firebasestorage.app",
+  messagingSenderId: "685162507832",
+  appId: "1:685162507832:web:716647160f381d96d8c0cd"
+};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -124,21 +110,23 @@ let usuarioAtual=null;
 onAuthStateChanged(auth,(user)=>{
 if(user){
 usuarioAtual=user;
-document.getElementById("authSection").classList.add("hidden");
-document.getElementById("appSection").classList.remove("hidden");
+authSection.classList.add("hidden");
+appSection.classList.remove("hidden");
 carregarTudo();
 }else{
-document.getElementById("authSection").classList.remove("hidden");
-document.getElementById("appSection").classList.add("hidden");
+authSection.classList.remove("hidden");
+appSection.classList.add("hidden");
 }
 });
 
 window.registrar=async()=>{
 await createUserWithEmailAndPassword(auth,email.value,senha.value);
 }
+
 window.login=async()=>{
 await signInWithEmailAndPassword(auth,email.value,senha.value);
 }
+
 window.logout=async()=>{await signOut(auth);}
 
 async function salvarProduto(){
@@ -155,19 +143,25 @@ carregarTudo();
 async function registrarVenda(){
 const id=produtoVenda.value;
 const qtd=parseInt(quantidadeVenda.value);
-const produtoDoc=doc(db,"produtos",id);
-const snap=await getDocs(query(collection(db,"produtos"),where("_name_","==",id)));
-snap.forEach(async(d)=>{
+
+const q=query(collection(db,"produtos"),where("__name__","==",id));
+const snapshot=await getDocs(q);
+
+snapshot.forEach(async(d)=>{
 let produto=d.data();
 if(produto.estoque<qtd)return alert("Sem estoque suficiente");
-await updateDoc(produtoDoc,{estoque:produto.estoque-qtd});
+
+await updateDoc(doc(db,"produtos",id),{
+estoque:produto.estoque-qtd
+});
+
 await addDoc(collection(db,"vendas"),{
-produto:produto.nome,
 valor:produto.preco*qtd,
 lucro:(produto.preco-produto.custo)*qtd,
 pagamento:pagamentoVenda.value,
 uid:usuarioAtual.uid
 });
+
 carregarTudo();
 });
 }
@@ -178,8 +172,7 @@ carregarDashboard();
 }
 
 async function carregarProdutos(){
-const lista=document.getElementById("listaProdutos");
-lista.innerHTML="";
+listaProdutos.innerHTML="";
 produtoVenda.innerHTML="";
 let total=0;
 
@@ -190,17 +183,19 @@ snapshot.forEach(docSnap=>{
 const p=docSnap.data();
 const id=docSnap.id;
 total++;
-lista.innerHTML+=`
+
+listaProdutos.innerHTML+=`
 <div class="card">
 <strong>${p.nome}</strong><br>
 Preço: R$ ${p.preco}<br>
 Custo: R$ ${p.custo}<br>
-Estoque: ${p.estoque}<br>
+Estoque: ${p.estoque}
 </div>`;
-produtoVenda.innerHTML+=<option value="${id}">${p.nome}</option>;
+
+produtoVenda.innerHTML+=`<option value="${id}">${p.nome}</option>`;
 });
 
-document.getElementById("totalProdutos").innerText=total;
+totalProdutos.innerText=total;
 }
 
 async function carregarDashboard(){
@@ -216,9 +211,8 @@ faturamento+=v.valor;
 lucro+=v.lucro;
 });
 
-document.getElementById("faturamento").innerText="R$ "+faturamento.toFixed(2);
-document.getElementById("lucroBruto").innerText="R$ "+lucro.toFixed(2);
-document.getElementById("lucroLiquido").innerText="R$ "+lucro.toFixed(2);
+faturamento.innerText="R$ "+faturamento.toFixed(2);
+lucroBruto.innerText="R$ "+lucro.toFixed(2);
 }
 
 </script>
